@@ -1,72 +1,90 @@
-
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>燕三条・脳トレパズル</title>
+    <title>燕三条・脳トレ名所めぐり</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background-color: #f0f8ff; margin: 0; padding: 20px; }
-        h1 { color: #2c3e50; font-size: 24px; }
-        .controls { margin-bottom: 20px; }
-        button { font-size: 18px; padding: 10px 20px; cursor: pointer; border-radius: 8px; border: none; background: #3498db; color: white; }
+        body { font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; text-align: center; background-color: #fdfaf0; margin: 0; padding: 20px; color: #333; }
+        h1 { color: #2c3e50; font-size: 22px; margin-bottom: 10px; }
+        .spot-name { font-size: 20px; font-weight: bold; color: #d35400; margin-bottom: 10px; }
+        .controls { margin-bottom: 15px; }
+        button { font-size: 18px; padding: 12px 24px; cursor: pointer; border-radius: 50px; border: none; background: #27ae60; color: white; box-shadow: 0 4px #1e8449; }
+        button:active { transform: translateY(2px); box-shadow: 0 2px #1e8449; }
         
-        /* パズルボードの設定 */
         #puzzle-board {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 4px;
             max-width: 360px;
             margin: 0 auto;
-            border: 4px solid #2c3e50;
-            background-color: #2c3e50;
+            border: 6px solid #8e44ad;
+            background-color: #8e44ad;
+            border-radius: 8px;
+            overflow: hidden;
         }
         .tile {
             aspect-ratio: 1 / 1;
-            background-size: 300% 300%; /* 3x3分割用 */
+            background-size: 300% 300%;
             cursor: pointer;
-            border: 1px solid rgba(255,255,255,0.3);
-            transition: transform 0.2s;
+            transition: opacity 0.2s;
         }
-        .tile.selected { outline: 5px solid #e74c3c; outline-offset: -5px; transform: scale(0.95); }
-        .message { margin-top: 20px; font-size: 20px; font-weight: bold; color: #27ae60; height: 30px; }
+        .tile.selected { filter: brightness(1.3); outline: 5px solid #f1c40f; outline-offset: -5px; }
+        .message-area { margin-top: 20px; min-height: 80px; }
+        .congrats { font-size: 24px; font-weight: bold; color: #e67e22; animation: bounce 0.5s infinite alternate; }
+        @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.1); } }
+        .next-btn { background: #e67e22; box-shadow: 0 4px #d35400; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
 
-    <h1>脳トレ！地元の風景パズル</h1>
+    <h1>脳トレ！燕三条パズル</h1>
+    <div id="spot-title" class="spot-name">第1問：大河津分水の桜</div>
     
     <div class="controls">
-        <button onclick="shuffleTiles()">最初から（まぜる）</button>
+        <button id="shuffle-btn" onclick="shuffleTiles()">まぜる（やり直し）</button>
     </div>
 
     <div id="puzzle-board"></div>
-    <div id="message" class="message"></div>
+
+    <div class="message-area">
+        <div id="message"></div>
+        <button id="next-btn" class="next-btn" onclick="nextLevel()">次の名所へ進む ＞</button>
+    </div>
 
     <script>
-        // パズルの設定
-        const GRID_SIZE = 3; // 3x3
-        // ここをご両親が撮った写真や、ネット上の写真URLに変えるだけでOK！
-        const IMAGE_URL = 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=800'; 
-        
+        // 燕三条の名所リスト（画像URLと名前）
+        const STAGES = [
+            { name: "大河津分水の桜", url: "https://www.city.tsubame.niigata.jp/material/files/group/11/sakura.jpg" },
+            { name: "弥彦神社の鳥居", url: "https://www.city.tsubame.niigata.jp/material/files/group/11/yakei.jpg" }, // 仮で夜景
+            { name: "国上山からの景色", url: "https://www.city.tsubame.niigata.jp/material/files/group/11/city_view.jpg" }
+        ];
+
+        let currentStage = 0;
+        const GRID_SIZE = 3; 
         let tiles = [];
         let selectedTile = null;
 
-        // 初期化
         function initPuzzle() {
             const board = document.getElementById('puzzle-board');
+            const spotTitle = document.getElementById('spot-title');
+            board.innerHTML = '';
             tiles = [];
+            selectedTile = null;
+            
+            spotTitle.innerText = `第${currentStage + 1}問：${STAGES[currentStage].name}`;
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('message').innerHTML = '';
+
             for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
                 const tile = document.createElement('div');
                 tile.className = 'tile';
-                tile.dataset.index = i; // 正解の位置
-                tile.dataset.current = i; // 現在の位置
+                tile.dataset.index = i; 
+                tile.dataset.current = i; 
                 
-                // 背景画像の位置計算
-                const x = (i % GRID_SIZE) * 50; // 0, 50, 100%
+                const x = (i % GRID_SIZE) * 50;
                 const y = Math.floor(i / GRID_SIZE) * 50;
-                tile.style.backgroundImage = `url(${IMAGE_URL})`;
+                tile.style.backgroundImage = `url(${STAGES[currentStage].url})`;
                 tile.style.backgroundPosition = `${x}% ${y}%`;
                 
                 tile.onclick = () => handleTileClick(tile);
@@ -76,13 +94,13 @@
             shuffleTiles();
         }
 
-        // クリック処理
         function handleTileClick(tile) {
+            if (document.getElementById('next-btn').style.display === 'block') return; // クリア後は動かさない
+
             if (selectedTile === null) {
                 selectedTile = tile;
                 tile.classList.add('selected');
             } else {
-                // 入れ替え
                 swapTiles(selectedTile, tile);
                 selectedTile.classList.remove('selected');
                 selectedTile = null;
@@ -93,34 +111,39 @@
         function swapTiles(tile1, tile2) {
             const tempPos = tile1.style.backgroundPosition;
             const tempIdx = tile1.dataset.index;
-
             tile1.style.backgroundPosition = tile2.style.backgroundPosition;
             tile1.dataset.index = tile2.dataset.index;
-
             tile2.style.backgroundPosition = tempPos;
             tile2.dataset.index = tempIdx;
         }
 
-        // シャッフル
         function shuffleTiles() {
-            document.getElementById('message').innerText = "";
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 30; i++) {
                 const r1 = Math.floor(Math.random() * tiles.length);
                 const r2 = Math.floor(Math.random() * tiles.length);
                 swapTiles(tiles[r1], tiles[r2]);
             }
+            document.getElementById('message').innerHTML = '';
         }
 
-        // 正解判定
         function checkWin() {
             const isWin = tiles.every(tile => tile.dataset.index == tile.dataset.current);
             if (isWin) {
-                document.getElementById('message').innerText = "お見事！完成です！";
+                document.getElementById('message').innerHTML = '<div class="congrats">正解！きれいですね！</div>';
+                if (currentStage < STAGES.length - 1) {
+                    document.getElementById('next-btn').style.display = 'inline-block';
+                } else {
+                    document.getElementById('message').innerHTML += '<p>全問クリア！お疲れ様でした。</p>';
+                }
             }
+        }
+
+        function nextLevel() {
+            currentStage++;
+            initPuzzle();
         }
 
         initPuzzle();
     </script>
 </body>
 </html>
-
